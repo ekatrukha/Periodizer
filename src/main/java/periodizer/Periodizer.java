@@ -2,6 +2,8 @@ package periodizer;
 
 
 
+import java.util.List;
+
 import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
@@ -40,81 +42,30 @@ public class Periodizer implements PlugIn
 			new ImageJ();
 			
 			// 1. Load image
-			ImagePlus image = IJ.openImage("/home/eugene/Desktop/projects/Periodizer/05.tif");
+			ImagePlus image = IJ.openImage("/home/eugene/Desktop/projects/Periodizer/05rot.tif");
 			image.show();
 
 			Img<R> img_in = Cast.unchecked(ImageJFunctions.wrap(image));
 
-			IntervalView< R > rai = Views.permute( img_in, 0, 1 );
-			// Dimensions: assuming [X, Y, T] order
-			long numDims = rai.numDimensions();
-			
-			long[] origDim = rai.dimensionsAsLongArray();
-			//make time dimension the last one'
-			//int timeDim = (int) numDims - 1; // Assuming time axis is the last dimension (2)
-			int timeDim = (int) numDims - 1;
-			int numFrames = ( int ) rai.dimension(timeDim);
-		
-			// Number of positive frequency bins (up to Nyquist limit)
-			//int numFreqs = numFrames / 2 + 1;
-//			long[] specDims = new long[( int ) numDims];
-//			for (int d = 0; d < timeDim; d++) {
-//				specDims[d] = rai.dimension(d);
-//			}
-//			specDims[timeDim] = numFreqs;
-			
-			
-			Img<FloatType> powerSpectrum = new ArrayImgFactory<>(new FloatType()).create(origDim);		
-			Img<ComplexFloatType> fftResult = new ArrayImgFactory<>(new ComplexFloatType()).create(origDim);
-			RandomAccess< ComplexFloatType > rafftResult = fftResult.randomAccess();
-			RandomAccess< FloatType > raPS = powerSpectrum.randomAccess();
-			
-			GeneralFFT gfft = new GeneralFFT();
-			gfft.preComputeCosSin(numFrames);
-			float[] timeSeries = new float[numFrames];
-			//double[] meanPower = new double[numFreqs];
-			
-			long numSpatialPixels = 1;
-			for (int d = 0; d < timeDim; d++) {
-				numSpatialPixels *= rai.dimension(d);
-			}
-			
-			final long[] pos = new long[(int) numDims];
-			RandomAccess<R> srcAccess = rai.randomAccess();
-			for (long p = 0; p < numSpatialPixels; p++) 
-			{
-				// Unravel 1D spatial index p into multi-dimensional position
-				long temp = p;
-				for (int d = 0; d < timeDim; d++) {
-					pos[d] = temp % rai.dimension(d);
-					temp /= rai.dimension(d);
-				}
-				
-				for (int t = 0; t < numFrames; t++) 
-				{
-					pos[timeDim] = t;
-					srcAccess.setPosition(pos);
-					timeSeries[t] = srcAccess.get().getRealFloat();
-				}
-				
-				final float[][] cfft = gfft.prC_transformR( timeSeries );
-				
-				for (int t = 0; t < numFrames; t++) 
-				{
-					pos[timeDim] = t;
-					rafftResult.setPosition( pos );
-					float realv = cfft[0][t];
-					float imv = cfft[1][t];
-					
-					rafftResult.get().set( new ComplexFloatType(realv,imv) );
-					raPS.setPosition( pos );
-					float power = ( float ) Math.sqrt( realv* realv + imv * imv );
-					raPS.get().set( power );
-				}
-				
-			}
+			//IntervalView< R > rai = Views.permute( img_in, 0, 1 );
+			//Img< ComplexFloatType > fftResult = TimeFFT.getPerPixelFFT( rai );
+			Img< ComplexFloatType > fftResult = TimeFFT.getPerPixelFFT( img_in );
+
+			Img< FloatType > powerSpectrum = TimeFFT.getPowerSpectrum( fftResult );
 			ImageJFunctions.show( powerSpectrum, "PS" );
-			ImageJFunctions.show( fftResult, "FFT" );
+			//ImageJFunctions.show( fftResult, "FFT" );
+			
+			Img< ComplexFloatType > bpFFT = TimeFFT.gaussPositiveBandPass( fftResult, 16, 2 );
+			Img< FloatType > powerSpectrumBP = TimeFFT.getPowerSpectrum( bpFFT );
+			ImageJFunctions.show( powerSpectrumBP, "bpPS" );
+
+			//ImageJFunctions.show( bpFFT, "bpFFT" );
+			List< Img< FloatType > > inv = TimeFFT.getInverseFFT( bpFFT );
+			
+//			for(Img< FloatType > im : inv)
+//			{
+//				ImageJFunctions.show(im); 
+//			}
 
 		}
 }
