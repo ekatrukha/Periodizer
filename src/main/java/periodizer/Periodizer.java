@@ -1,21 +1,13 @@
 package periodizer;
 
-
-
-import java.util.List;
-
-import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.complex.ComplexFloatType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Cast;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.Views;
 
 import ij.IJ;
 import ij.ImageJ;
